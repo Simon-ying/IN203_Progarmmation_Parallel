@@ -7,6 +7,7 @@
 # include <iostream>
 # include <iomanip>
 # include <mpi.h>
+#include <stdlib.h>
 
 // Attention , ne marche qu'en C++ 11 ou supérieur :
 double approximate_pi( unsigned long nbSamples ) 
@@ -38,6 +39,10 @@ int main( int nargs, char* argv[] )
 	//    2. d'attribuer à chaque processus un identifiant ( entier ) unique pour
 	//       le communicateur COMM_WORLD
 	//    3. etc...
+	if (nargs != 2){
+		std::cout << "format : mpiexec -np i Calcul_de_pi.exe N\n";
+		return 1;
+	}
 	MPI_Init( &nargs, &argv );
 	// Pour des raisons de portabilité qui débordent largement du cadre
 	// de ce cours, on préfère toujours cloner le communicateur global
@@ -54,14 +59,31 @@ int main( int nargs, char* argv[] )
 	// l'utilisateur )
 	int rank;
 	MPI_Comm_rank(globComm, &rank);
-	// Création d'un fichier pour ma propre sortie en écriture :
-	std::stringstream fileName;
-	fileName << "Output" << std::setfill('0') << std::setw(5) << rank << ".txt";
-	std::ofstream output( fileName.str().c_str() );
-
+	int nbSample = atoi(argv[1]);
+	int nbSamples = nbSample/(nbp-1);
+	double pi;
+	MPI_Status stat;
+	double recvMsgs[nbp-2];
+	if (rank == nbp-1){
+		// MPI_Recv (&buf,count ,datatype ,source ,tag,comm , &status)
+		for (int i=0; i<nbp-1; i++){
+			MPI_Recv(recvMsgs+i, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, globComm, &stat);
+		}
+		for (int i=0; i<nbp-1; i++){
+			pi += recvMsgs[i];
+			std::cout << recvMsgs[i] << " ";
+		}
+		std::cout << std::endl;
+		pi = pi * nbSamples / nbSample;
+		std::cout << "The final result of PI is " << pi << std::endl;
+	}
+	else{
+		pi = approximate_pi(nbSamples);
+		MPI_Send(&pi, 1, MPI_DOUBLE, nbp-1, rank, globComm);
+		std::cout << rank << "/" << pi << std::endl;
+	}
 	// Rajout de code....
 
-	output.close();
 	// A la fin du programme, on doit synchroniser une dernière fois tous les processus
 	// afin qu'aucun processus ne se termine pendant que d'autres processus continue à
 	// tourner. Si on oublie cet instruction, on aura une plantage assuré des processus
