@@ -3,6 +3,8 @@
 # include <mpi.h>
 # include <sstream>
 # include <fstream>
+# include <string>
+# include <iomanip>
 
 int main( int nargs, char* argv[] )
 {
@@ -13,10 +15,20 @@ int main( int nargs, char* argv[] )
                   &numero_du_processus);
     MPI_Comm_size(MPI_COMM_WORLD, 
                   &nombre_de_processus);
-    std::cout << "Hello world from " 
-              << numero_du_processus << " in "
-              << nombre_de_processus << " executed" 
+    std::stringstream fileName;
+    fileName << "Output" << std::setfill('0') << std::setw(5) << numero_du_processus << ".txt";
+    std::ofstream output( fileName.str().c_str() );
+
+    output << "Bonjour, je suis la tâche n° " << numero_du_processus << " sur " << nombre_de_processus << " tâches." << std::endl;
+
+    output.close();
+    /*
+    // affichier Bonjour, je suis la tâche n° xx sur yy tâches
+    std::cout << "Bonjour, je suis la tâche n° " 
+              << numero_du_processus << " sur "
+              << nombre_de_processus << " tâches" 
               << std::endl;
+    */
     MPI_Finalize();
     return EXIT_SUCCESS;
 }

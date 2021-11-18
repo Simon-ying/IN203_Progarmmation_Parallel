@@ -1,7 +1,7 @@
 # include <iostream>
 # include <cstdlib>
 # include <mpi.h>
-
+# include <random>
 int main( int nargs, char* argv[] )
 {
 	// On initialise le contexte MPI qui va s'occuper :
@@ -27,10 +27,47 @@ int main( int nargs, char* argv[] )
 	int rank;
 	MPI_Comm_rank(globComm, &rank);
 
-	// On peut maintenant commencer à écrire notre programme parallèle en utilisant les
-	// services offerts par MPI.
-	std::cout << "Hello World, I'm processus " << rank << " on " << nbp << " processes.\n";
-
+	// Le message reçu ou envoyé
+	int outmsg;
+	int inmsg;
+	MPI_Status stat;
+	outmsg = (rank + 18) * 2;
+	if (rank == 0){
+		// outmsg = 1;
+		
+		// MPI_Ssend( &buf, count , datatype , dest , tag, comm)
+		/*
+		MPI_Sendrecv(&sendBuf , sendCount , sendType , dest , sendTag ,
+					 &recvBuf , recvCount , recvType , source , recvTag ,
+					 comm , &status);
+		*/
+		/*
+		MPI_Sendrecv(&outmsg, 1, MPI_INT, rank+1, 18, 
+					 &inmsg, 1, MPI_INT, nbp-1, 18,
+					 globComm, &stat);
+		*/
+		MPI_Sendrecv(&outmsg, 1, MPI_INT, rank+1, rank, 
+					 &inmsg, 1, MPI_INT, nbp-1, nbp-1,
+					 globComm, &stat);
+		std::cout << "The Message sent by processor n." << nbp-1 << ", recieved by processor n." << rank << " is: " << inmsg << std::endl;
+	}
+	else if (rank == nbp - 1){
+		// MPI_Recv (&buf,count ,datatype ,source ,tag,comm , &status)
+		// MPI_Recv(&inmsg, 1, MPI_INT, rank-1, 18, globComm, &stat);
+		MPI_Recv(&inmsg, 1, MPI_INT, rank-1, rank-1, globComm, &stat);
+		// outmsg = inmsg;
+		// MPI_Send(&outmsg, 1, MPI_INT, 0, 18, globComm);
+		MPI_Send(&outmsg, 1, MPI_INT, 0, rank, globComm);
+		std::cout << "The Message sent by processor n." << rank-1 << ", recieved by processor n." << rank << " is: " << inmsg << std::endl;
+	}
+	else{
+		// MPI_Recv(&inmsg, 1, MPI_INT, rank-1, 18, globComm, &stat);
+		// outmsg = inmsg;
+		// MPI_Send(&outmsg, 1, MPI_INT, rank+1, 18, globComm);
+		MPI_Recv(&inmsg, 1, MPI_INT, rank-1, rank-1, globComm, &stat);
+		MPI_Send(&outmsg, 1, MPI_INT, rank+1, rank, globComm);
+		std::cout << "The Message sent by processor n." << rank-1 << ", recieved by processor n." << rank << " is: " << inmsg << std::endl;
+	}
 	// A la fin du programme, on doit synchroniser une dernière fois tous les processus
 	// afin qu'aucun processus ne se termine pendant que d'autres processus continue à
 	// tourner. Si on oublie cet instruction, on aura une plantage assuré des processus
