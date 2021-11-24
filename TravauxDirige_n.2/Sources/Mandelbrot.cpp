@@ -7,6 +7,7 @@
 # include <fstream>
 # include <mpi.h>
 
+#define VERSION_MPI
 
 /** Une structure complexe est définie pour la bonne raison que la classe
  * complex proposée par g++ est très lente ! Le calcul est bien plus rapide
@@ -90,6 +91,11 @@ computeMandelbrotSetRow( int W, int H, int maxIter, int num_ligne, int* pixels)
     }
 }
 
+/**
+ * On modifie un peu la fonction computeMandelbrotSet
+ * pour qu'il est plus adapté à notre programme
+**/
+#ifdef VERSION_NON_MPI
 std::vector<int>
 computeMandelbrotSet( int W, int H, int maxIter )
 {
@@ -106,6 +112,27 @@ computeMandelbrotSet( int W, int H, int maxIter )
               << std::endl;
     return pixels;
 }
+#endif
+#ifdef VERSION_MPI
+std::vector<int>
+computeMandelbrotSet( int W, int H, int bl, int el, int maxIter)
+{
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::vector<int> pixels(W*(el-bl));
+    start = std::chrono::system_clock::now();
+    // On parcourt les pixels de l'espace image :
+    for ( int i = bl; i < el; ++i ) {
+      computeMandelbrotSetRow(W, H, maxIter, i, pixels.data() + W*(el-i-1) );
+    }
+    end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end-start;
+    std::cout << "Temps calcul ensemble mandelbrot : " << elapsed_seconds.count() 
+              << std::endl;
+    return pixels;
+}
+#endif
+
+
 
 /** Construit et sauvegarde l'image finale **/
 void savePicture( const std::string& filename, int W, int H, const std::vector<int>& nbIters, int maxIter )
@@ -140,36 +167,28 @@ int main(int argc, char *argv[] )
     MPI_Comm_size(globComm, &nbp);
     int rank;
     MPI_Comm_rank(globComm, &rank);
-    int inteval = H/nbp;
-    std::vector<int> outMsg(W*inteval);
-    std::vector<int> outMsgF(W*(H-(nbp-1)*inteval));
+
+    int bpList[nbp];
+    for (int i=0; i<nbp; i++){
+    	bpList[i] = i * H/nbp;
+    }
+
+    std::vector<int> outMsg;
     std::vector<int> inMsg(W*H);
 
-    if (rank == 0){
-        auto iters = computeMandelbrotSet(W, inteval, maxIter);        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )        
-    }
-    else if (rank == nbp-1){
-        auto iters = computeMandelbrotSet(W, H-(nbp-1)*inteval, maxIter);        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
+    if (rank == nbp-1){
+    	outMsg = computeMandelbrotSet(W, H, bpList[rank], H, maxIter);
+    	
     }
     else{
-        auto iters = computeMandelbrotSet(W, inteval, maxIter);        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
+    	outMsg = computeMandelbrotSet(W, H, bpList[rank], bpList[rank+1], maxIter);
     }
-    MPI_Gather(&outMsg[0], W*inteval, MPI_INT, &inMsg[0], W*H, MPI_INT, 0, globComm);
+    MPI_Gather(outMsg.data(), outMsg.size(), MPI_INT, inMsg.data(), W*H, MPI_INT, 0, globComm);
+    if (rank == 0){
+    	savePicture("mandelbrot.tga", W, H, inMsg, maxIter);
+    }
 
-    if (rank==0){
-        if(nbp!=1){
-            MPI_Status status;
-            MPI_Recv(&inMsg[W*nbp*(int)(H/nbp)], W*(H-nbp*(int)(H/nbp)), MPI_INT, nbp-1, 0, globComm, &status);
-        }
-
-        savePicture("mandelbrot.tga", W, H, inMsg, maxIter);
-    }
-    else if(rank==nbp-1){
-        MPI_Send(&outMsg[W*(int)(H/nbp)], W*(H-nbp*(int)(H/nbp)), MPI_INT, 0, 0, globComm);
-    }
     MPI_Finalize();
-    // auto iters = computeMandelbrotSet( W, H, maxIter );
-    // savePicture("mandelbrot.tga", W, H, iters, maxIter);
     return EXIT_SUCCESS;
  }
     
