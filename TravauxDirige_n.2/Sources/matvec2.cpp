@@ -1,4 +1,4 @@
-// Produit parallèle matrice – vecteur par colonne
+// Produit parallèle matrice – vecteur par ligne
 # include <cassert>
 # include <vector>
 # include <iostream>
@@ -112,19 +112,15 @@ int main( int nargs, char* argv[] )
     MPI_Comm_size(globComm, &nbp);
     int rank;
     MPI_Comm_rank(globComm, &rank);
-    Matrix A_p(N, N/nbp);
-    for(int i=0; i<N; ++i){
-        for(int j=0; j<N/nbp; ++j){
-            A_p(i, j) = A(i, rank*N/nbp+j);
+    Matrix A_p(N/nbp, N);
+    for(int i=0; i<N/nbp; ++i){
+        for(int j=0; j<N; ++j){
+            A_p(i, j) = A(rank*N/nbp+i, j);
         }
     }
-    std::vector<double> u_p(N/nbp);
-    for(int i=0; i<N/nbp; ++i){
-        u_p[i] = u[i+rank*N/nbp];
-    }
-    std::vector<double> v_p = A_p*u_p;
+    std::vector<double> v_p = A_p*u;
     std::vector<double> v(N);
-    MPI_Allreduce(&(v_p[0]), &(v[0]), N, MPI_DOUBLE, MPI_SUM, globComm);
+    MPI_Allgather(&(v_p[0]), N/nbp, MPI_DOUBLE, &(v[0]), N/nbp, MPI_DOUBLE, globComm);
     if(rank==0){
         std::cout << "A.u = " << v << std::endl;
     }

@@ -1,4 +1,4 @@
-/**Exercice 3.1
+/**Exercice 3.2
  **/
 
 # include <iostream>
@@ -137,23 +137,43 @@ int main(int argc, char *argv[] )
     MPI_Comm_size(globComm, &nbp);
     int rank;
     MPI_Comm_rank(globComm, &rank);
-    std::vector<int> iters(W*H), iters_p;
-    std::chrono::time_point<std::chrono::system_clock> start, end;
-    if(rank == 0){
+    if(nbp == 1){
+        std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        iters_p = computeMandelbrotSet( W, H, maxIter, H-(int)(H/nbp), (int)(H/nbp));
+        std::vector<int> iters = computeMandelbrotSet(W, H, maxIter, 0, H);
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end-start;
+        std::cout << "Temps calcul ensemble mandelbrot : " << elapsed_seconds.count() 
+                << std::endl;
+        savePicture("mandelbrot.tga", W, H, iters, maxIter);
     }
-    else if(rank == nbp-1){
-        iters_p = computeMandelbrotSet( W, H, maxIter, 0, H-(int)(H/nbp)*rank);
-    }
-    else{
-        iters_p = computeMandelbrotSet( W, H, maxIter, H-(rank+1)*(int)(H/nbp), (int)(H/nbp));
-    }
-    MPI_Gather(&iters_p[0], W*(int)(H/nbp), MPI_INT, &iters[0], W*(int)(H/nbp), MPI_INT, 0, globComm);
-    if (rank==0){
-        if(nbp!=1){
-            MPI_Status status;
-            MPI_Recv(&iters[W*nbp*(int)(H/nbp)], W*(H-nbp*(int)(H/nbp)), MPI_INT, nbp-1, 0, globComm, &status);
+    else if(rank == 0){
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        int ligne[2] = {0, H/(nbp-1)}; // le premier élément est le début de lignes à calculer (à déterminer après), le deuxième élément est le nombre de lignes à calculer
+        for (int i=1; i<nbp-1; ++i){
+            ligne[0] = H-i*(H/(nbp-1));
+            MPI_Send(ligne, 2, MPI_INT, i, i, globComm);
+        }
+        if ((int)(H/(nbp-1))*(nbp-1)!=H){
+            ligne[0] = 0;
+            ligne[1] = H - (int)(H/(nbp-1))*(nbp-2);
+            MPI_Send(ligne, 2, MPI_INT, nbp-1, nbp-1, globComm);
+        }
+        else{
+            ligne[0] = 0;
+            MPI_Send(ligne, 2, MPI_INT, nbp-1, nbp-1, globComm);
+        }
+        std::vector<int> iters(W*H);
+        MPI_Status status;
+        for(int i=1; i<nbp-1; ++i){
+            MPI_Recv(&(iters[W*(i-1)*(int)(H/(nbp-1))]), W*(int)(H/(nbp-1)), MPI_INT, i, nbp+i, globComm, &status);
+        }
+        if ((int)(H/(nbp-1))*(nbp-1)!=H){
+            MPI_Recv(&(iters[W*(nbp-2)*(int)(H/(nbp-1))]), W*(H-(int)(H/(nbp-1))*(nbp-2)), MPI_INT, nbp-1, 2*nbp-1, globComm, &status);
+        }
+        else{
+            MPI_Recv(&(iters[W*(nbp-2)*(int)(H/(nbp-1))]), W*(int)(H/(nbp-1)), MPI_INT, nbp-1, 2*nbp-1, globComm, &status);
         }
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
@@ -161,8 +181,12 @@ int main(int argc, char *argv[] )
                 << std::endl;
         savePicture("mandelbrot.tga", W, H, iters, maxIter);
     }
-    else if(rank==nbp-1){
-        MPI_Send(&iters_p[W*(int)(H/nbp)], W*(H-nbp*(int)(H/nbp)), MPI_INT, 0, 0, globComm);
+    else{
+        int ligne[2];
+        MPI_Status status;
+        MPI_Recv(ligne, 2, MPI_INT, 0, rank, globComm, &status);
+        auto iters_p = computeMandelbrotSet(W, H, maxIter, ligne[0], ligne[1]);
+        MPI_Send(&(iters_p)[0], ligne[1]*W, MPI_INT, 0, nbp+rank, globComm);
     }
     MPI_Finalize();
     return EXIT_SUCCESS;

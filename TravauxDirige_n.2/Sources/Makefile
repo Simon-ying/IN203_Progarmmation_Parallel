@@ -1,4 +1,4 @@
-include Make.inc
+include Make_linux.inc
 #include Make_msys2.inc
 #include Make_osx.inc
 
@@ -9,7 +9,7 @@ else
 CXXFLAGS += -O3 -march=native -Wall
 endif
 
-ALL=matvec.exe Mandelbrot.exe 
+ALL=matvec.exe matvec2.exe Mandelbrot.exe Mandelbrot2.exe 
 
 default:	help
 
@@ -26,7 +26,9 @@ help:
 	@echo "Available targets : "
 	@echo "    all            : compile all executables"
 	@echo "    matvec.exe     : compile matrix vector product executable"
+	@echo "    matvec2.exe    : compile matrix2 vector product executable"
 	@echo "    Mandelbrot.exe : compile Mandelbrot set computation executable"
+	@echo "    Mandelbrot2.exe: compile Mandelbrot2 set computation executable"
 	@echo "Add DEBUG=yes to compile in debug"
 	@echo "Configuration :"
 	@echo "    CXX      :    $(CXX)"
