@@ -141,29 +141,31 @@ int main(int argc, char *argv[] )
     int rank;
     MPI_Comm_rank(globComm, &rank);
     int inteval = H/nbp;
-    int outMsg[W*inteval];
-    int outMsgF[W*(H-(nbp-1)*inteval)];
-    int inMsg[W*H];
+    std::vector<int> outMsg(W*inteval);
+    std::vector<int> outMsgF(W*(H-(nbp-1)*inteval));
+    std::vector<int> inMsg(W*H);
 
     if (rank == 0){
-        auto iters = computeMandelbrotSet(W, inteval, maxIter);
-        memcpy(outMsg, &iters[0], iters.size() * sizeof(iters[0]));
-        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
-        MPI_Gather(outMsg, W*inteval, MPI_INT, inMsg, W*H, MPI_INT, 0, globComm);
-        std::vector<int> finalRes(inMsg, inMsg+W*H);
-        savePicture("mandelbrot.tga", W, H, finalRes, maxIter);
+        auto iters = computeMandelbrotSet(W, inteval, maxIter);        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )        
     }
     else if (rank == nbp-1){
-        auto iters = computeMandelbrotSet(W, H-(nbp-1)*inteval, maxIter);
-        memcpy(outMsgF, &iters[0], iters.size() * sizeof(iters[0]));
-        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
-        MPI_Gather(outMsgF, W*(H-(nbp-1)*inteval), MPI_INT, inMsg, W*H, MPI_INT, 0, globComm);
+        auto iters = computeMandelbrotSet(W, H-(nbp-1)*inteval, maxIter);        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
     }
     else{
-        auto iters = computeMandelbrotSet(W, inteval, maxIter);
-        memcpy(outMsg, &iters[0], iters.size() * sizeof(iters[0]));
-        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
-        MPI_Gather(outMsg, W*inteval, MPI_INT, inMsg, W*H, MPI_INT, 0, globComm);
+        auto iters = computeMandelbrotSet(W, inteval, maxIter);        // MPI_Gather (&sendbuf, sendcnt, sendtype, &recvbuf, recvcnt, recvtype, root, comm )
+    }
+    MPI_Gather(&outMsg[0], W*inteval, MPI_INT, &inMsg[0], W*H, MPI_INT, 0, globComm);
+
+    if (rank==0){
+        if(nbp!=1){
+            MPI_Status status;
+            MPI_Recv(&inMsg[W*nbp*(int)(H/nbp)], W*(H-nbp*(int)(H/nbp)), MPI_INT, nbp-1, 0, globComm, &status);
+        }
+
+        savePicture("mandelbrot.tga", W, H, inMsg, maxIter);
+    }
+    else if(rank==nbp-1){
+        MPI_Send(&outMsg[W*(int)(H/nbp)], W*(H-nbp*(int)(H/nbp)), MPI_INT, 0, 0, globComm);
     }
     MPI_Finalize();
     // auto iters = computeMandelbrotSet( W, H, maxIter );
