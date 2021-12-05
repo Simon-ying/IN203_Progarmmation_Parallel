@@ -6,9 +6,14 @@
 # include <iomanip>
 # include <cmath>
 # include <mpi.h>
-
+# include <exception>
+static int dim = 0;
 int main( int nargs, char* argv[] )
 {
+	// dim = dimension de l'hypercube : 1, 2, 3
+	if (nargs == 2){
+		dim = atoi(argv[1]);
+	}
 	// Initialisation
 	MPI_Init( &nargs, &argv );
 	MPI_Comm globComm;
@@ -23,52 +28,103 @@ int main( int nargs, char* argv[] )
 	std::stringstream fileName;
 	fileName << "Output" << std::setfill('0') << std::setw(5) << rank << ".txt";
 	std::ofstream output( fileName.str().c_str() );
-
 	int jeton;
-	if (0 == rank) jeton = 31415; // Seul le proc zéro initialise le jeton pour le diffuser
-
-	const int tag = 101;
+	const int tag = 18;
 	MPI_Status status;
-	// Calcul dimension du cube :
-	int ndim = 0;
-	int nbnodes = nbp;
-	while (nbnodes > 1)
-	{
-		nbnodes /= 2;
-		++ ndim;
-	}
-	// Bon à savoir : (1<<d) correspond à calculer 2^d (2 à la puissance d)
-	// On vérifie qu'on avait bien une puissance de deux comme nombre de processus :
-	if (nbp - (1<<ndim) > 0)
-	{ // Si la différence est non nulle, c'est qu'on n'avait pas une puissance de deux !
-		std::cerr << "Attention : le nombre de processus doit etre une puissance de deux !" << std::flush << std::endl;
-		MPI_Abort(globComm, -1);
-	}
 
-	/***
-	dim = 1: 0=>1
-	dim = 2: dim = 1 + 0=>2, 1=>3
-	dim = 3: dim = 1 + dim = 2 + 0=>4, 1=>5, 2=>6, 3=>7
-	dim = n: sum(dim(1...n-1)) + (0...2^(n-1)-1)=>()+2^(n-1)
-	***/
-	for ( int d = 0; d < ndim; ++d )
-	{
-		int nb_nodes_in_hcube_d = (1<<d);
-		if (rank < nb_nodes_in_hcube_d)// Les noeuds appartenant à l'hypercube de dimension d diffuse
-		{                              // le jeton.
-			MPI_Send(&jeton, 1, MPI_INT, rank + nb_nodes_in_hcube_d, tag, globComm);
+	// pour dimension = 1
+	if (dim == 1){
+		if (nbp != 2){
+			std::cerr << "Attention : le nombre de processus doit etre 2 !" << std::flush << std::endl;
+			MPI_Abort(globComm, -1);
 		}
-		else if (rank < 2*nb_nodes_in_hcube_d)// Les noeuds qui se trouvent sur l'hypercube de dimension d+1
-		{                                     // mais pas de dimension d recoivent le jeton.
-			MPI_Recv(&jeton, 1, MPI_INT, rank - nb_nodes_in_hcube_d, tag, globComm, &status);
-		}
-	}
-	// Remarque: on a bien fait un nombre d'échange égal à la dimension du cube !
-
-    output << "Apres echange, je possede le jeton avec la valeur : " << jeton << std::flush
-           << std::endl;
+		try{
+			if (rank == 0){
+				jeton = 27182;
+				MPI_Send(&jeton, 1, MPI_INT, 1, tag, globComm);
+			}
+			if (rank == 1){
+				MPI_Recv(&jeton, 1, MPI_INT, 0, tag, globComm, &status);
+			}
+			output << "Apres echange, je possede le jeton avec la valeur : " << jeton << std::flush << std::endl;
 	
-	output.close();
+			output.close();
+		}
+		catch(std::exception& e){
+			std::cerr << e.what() << std::endl;
+		}
+	}
+	// pour dimension == 2
+	else if (dim == 2){
+		if (nbp != 4){
+			std::cerr << "Attention : le nombre de processus doit etre 4 !" << std::flush << std::endl;
+			MPI_Abort(globComm, -1);
+		}
+		try{
+			if (rank == 0){
+				jeton = 27182;
+				MPI_Send(&jeton, 1, MPI_INT, 1, tag, globComm);
+				MPI_Send(&jeton, 1, MPI_INT, 2, tag, globComm);
+			}
+			if (rank == 1){
+				MPI_Recv(&jeton, 1, MPI_INT, 0, tag, globComm, &status);
+				MPI_Send(&jeton, 1, MPI_INT, 3, tag, globComm);
+			}
+			if (rank == 2){
+				MPI_Recv(&jeton, 1, MPI_INT, 0, tag, globComm, &status);
+			}
+			if (rank == 3){
+				MPI_Recv(&jeton, 1, MPI_INT, 1, tag, globComm, &status);
+			}
+			output << "Apres echange, je possede le jeton avec la valeur : " << jeton << std::flush << std::endl;
+	
+			output.close();
+		}
+		catch(std::exception& e){
+			std::cerr << e.what() << std::endl;
+		}
+	}
+	// cas general
+	else{
+		if (0 == rank) jeton = 27182;
+
+		int ndim = 0;
+		int nbnodes = nbp;
+		// Calcul dimension du cube :
+		while (nbnodes > 1){
+			nbnodes /= 2;
+			ndim++;
+		}
+		if (nbp - (1<<ndim) > 0){
+			std::cerr << "Attention : le nombre de processus doit etre une puissance de deux !" << std::flush << std::endl;
+			MPI_Abort(globComm, -1);
+		}
+		/***
+		dim = 1: 0=>1
+		dim = 2: dim = 1 + 0=>2, 1=>3
+		dim = 3: dim = 1 + dim = 2 + 0=>4, 1=>5, 2=>6, 3=>7
+		dim = n: sum(dim(1...n-1)) + (0...2^(n-1)-1)=>()+2^(n-1)
+		...
+		***/
+
+		for (int d=0; d<ndim; d++){
+			int nb = (1<<d);
+			if (rank < nb){
+				MPI_Send(&jeton, 1, MPI_INT, rank+nb, tag, globComm);
+			}
+			else if (rank < 2*nb){
+				MPI_Recv(&jeton, 1, MPI_INT, rank-nb, tag, globComm, &status);
+			}
+		}
+
+		output << "Apres echange, je possede le jeton avec la valeur : " << jeton << std::flush << std::endl;
+	
+		output.close();
+
+
+	}
+
+    
 	MPI_Finalize();
 	return EXIT_SUCCESS;
 }
