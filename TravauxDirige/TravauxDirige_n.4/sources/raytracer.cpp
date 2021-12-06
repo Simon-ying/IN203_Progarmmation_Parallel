@@ -29,10 +29,11 @@
 #include <cassert>
 #include <chrono>
 #include <random>
+#include <tbb/tbb.h>
 
 constexpr const double dpi = 3.141592653589793;
 constexpr const float fpi = 3.141592653589793f;
-
+bool MODE_TBB = true;
 template<typename T>
 class Vec3
 {
@@ -278,6 +279,26 @@ void render(const std::vector<Sphere> &spheres, unsigned width = 640, unsigned h
     float angle = tan(fpi * 0.5f * fov / 180.f);
     auto start = std::chrono::system_clock::now();
     // Trace rays
+    if (MODE_TBB){
+    constexpr const int grainSize = 2;
+    //auto partitioner = tbb::simple_partitioner();
+    auto partitioner = tbb::auto_partitioner();
+    //auto partitioner = tbb::static_partitioner();
+    tbb::parallel_for(tbb::blocked_range2d<unsigned,unsigned>(0,width,grainSize,0,height,grainSize),
+        [&](tbb::blocked_range2d<unsigned,unsigned> const &r){
+            for (auto y=r.cols().begin(); y<r.cols().end(); y++){
+                for (auto x=r.rows().begin();x<r.rows().end(); x++){
+                    float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
+                    float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
+                    Vec3f raydir(xx, yy, -1);
+                    raydir.normalize();
+                    image[x + y*width] = trace(Vec3f(0), raydir, spheres, 0);
+                }
+            }
+        },
+        partitioner);
+    }
+    else{
     for (unsigned y = 0; y < height; ++y) 
     {
         for (unsigned x = 0; x < width; ++x) 
@@ -288,6 +309,7 @@ void render(const std::vector<Sphere> &spheres, unsigned width = 640, unsigned h
             raydir.normalize();
             image[x + y*width] = trace(Vec3f(0), raydir, spheres, 0);
         }
+    }
     }
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> deltaT = end - start;
@@ -310,6 +332,10 @@ void render(const std::vector<Sphere> &spheres, unsigned width = 640, unsigned h
 //[/comment]
 int main(int argc, char **argv)
 {
+    if (argc>1){
+        MODE_TBB = false;
+        std::cout << "MODE_TBB = False\n";
+    }
     constexpr const int nbre_sphere = 50;
     //std::random_device dev;
     std::mt19937 rng(10);// On fixe la graine pour avoir la même série de nombre

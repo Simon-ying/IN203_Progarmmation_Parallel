@@ -63,4 +63,4 @@
 
 ### Travaux dirigés n°1 - MPI
 
-- Voir énoncé de TP n°1
+- Voir énoncé de TP n°1 et énoncé de TP n°2

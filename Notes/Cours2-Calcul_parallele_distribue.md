@@ -58,3 +58,5 @@
 - Équilibrage des charges : Tous les processus mettent le même temps de traitement de leurs données.
 - Équilibrage dynamique des charges : **Squelette algorithme maître–esclave** <font color=red>(important)</font>
 - Granularité parallèle : Rapport du nombre d’opérations effectuées sur le nombre de données échangés
+
+## Travaux dirigés n°2 - MPI
