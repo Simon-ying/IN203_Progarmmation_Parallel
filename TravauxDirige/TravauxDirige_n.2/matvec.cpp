@@ -1,8 +1,9 @@
-// Produit parallèle matrice – vecteur par colonne
+// Produit matrice-vecteur
 # include <cassert>
 # include <vector>
 # include <iostream>
 # include <mpi.h>
+# include <utility>
 
 // ---------------------------------------------------------------------
 class Matrix : public std::vector<double>
@@ -40,6 +41,10 @@ public:
         out << "]";
         return out;
     }
+    std::pair<int,int> Size(){
+        return std::make_pair(m_nrows, m_ncols);
+    }
+
 private:
     int m_nrows, m_ncols;
     std::vector<double> m_arr_coefs;
@@ -97,37 +102,80 @@ Matrix::Matrix( int nrows, int ncols ) : m_nrows(nrows), m_ncols(ncols),
     }    
 }
 // =====================================================================
+Matrix getCols(Matrix& A, int begin, int cols){
+
+    Matrix res(A.Size().first, cols);
+    for (int i=0; i < A.Size().first; i++){
+        for (int j=0; j<cols; j++){
+            res(i,j) = A(i, j+begin);
+        }
+    }
+    return res;
+}
+// =====================================================================
+Matrix getRows(Matrix& A, int begin, int rows){
+
+    Matrix res(rows, A.Size().second);
+    for (int i=0; i < rows; i++){
+        for (int j=0; j<A.Size().second; j++){
+            res(i,j) = A(i+begin, j);
+        }
+    }
+    return res;
+}
+// =====================================================================
 int main( int nargs, char* argv[] )
 {
-    const int N = 120;
-    Matrix A(N);
-    std::cout  << "A : " << A << std::endl;
-    std::vector<double> u( N );
-    for ( int i = 0; i < N; ++i ) u[i] = i+1;
-    std::cout << " u : " << u << std::endl;
     MPI_Init(&nargs, &argv);
     MPI_Comm globComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &globComm);
-    int nbp;
+    int nbp, rank;
     MPI_Comm_size(globComm, &nbp);
-    int rank;
     MPI_Comm_rank(globComm, &rank);
-    Matrix A_p(N, N/nbp);
-    for(int i=0; i<N; ++i){
-        for(int j=0; j<N/nbp; ++j){
-            A_p(i, j) = A(i, rank*N/nbp+j);
-        }
+
+    const int N = 120;
+    Matrix A(N);
+    //std::cout  << "A : " << A << std::endl;
+    std::vector<double> u( N );
+    for ( int i = 0; i < N; ++i ) u[i] = i+1;
+    //std::cout << " u : " << u << std::endl;
+
+    int interval = N / nbp;
+    int lastSize = N - (nbp-1)*interval;
+    int size;
+
+    std::vector<double> outMsg(N);
+    std::vector<double> outMsg_l;
+    std::vector<double> v(1);
+    std::vector<double> vl(1);
+    if (rank == 0){
+        std::vector<double>(N).swap(v);
+        std::vector<double>(N).swap(vl);
     }
-    std::vector<double> u_p(N/nbp);
-    for(int i=0; i<N/nbp; ++i){
-        u_p[i] = u[i+rank*N/nbp];
+    if (rank == nbp-1){
+        size = lastSize;
     }
-    std::vector<double> v_p = A_p*u_p;
-    std::vector<double> v(N);
-    MPI_Allreduce(&(v_p[0]), &(v[0]), N, MPI_DOUBLE, MPI_SUM, globComm);
-    if(rank==0){
-        std::cout << "A.u = " << v << std::endl;
+    else{
+        size = interval;
     }
+
+    outMsg =  getCols(A, interval*rank, size) * std::vector<double>(u.begin()+interval*rank, u.begin()+interval*rank+size);
+    outMsg_l =  getRows(A, interval*rank, size) * u;
+
+
+
+    MPI_Reduce(outMsg.data(), v.data(), N, MPI_DOUBLE, MPI_SUM,0 , globComm);
+    MPI_Gather(outMsg_l.data(), size, MPI_DOUBLE, vl.data(), size, MPI_DOUBLE, 0, globComm);
+    // std::vector<double> v = A*u;
+    if (rank == 0){
+        std::vector<double> v_test = A*u;
+        std::cout << "A.u_test = " << v_test << " , size : " << v_test.size() << std::endl;
+        std::cout << "A.u = " << v << " , size : " << v.size() << std::endl;
+        std::cout << "A.u_l = " << vl << " , size : " << vl.size() << std::endl;
+
+    }
+    
+
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
