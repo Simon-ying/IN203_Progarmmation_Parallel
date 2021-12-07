@@ -5,6 +5,7 @@
 # include <cmath>
 # include <vector>
 # include <fstream>
+# include <omp.h>
 
 
 /** Une structure complexe est définie pour la bonne raison que la classe
@@ -89,19 +90,6 @@ computeMandelbrotSetRow( int W, int H, int maxIter, int num_ligne, int* pixels)
     }
 }
 
-// start : start line of calculate : [0, H-1]
-// lines : number of lines to calculate : [1, H]
-std::vector<int>
-computeMandelbrotSetRows( int W, int H, int maxIter, int start, int lines )
-{
-    std::vector<int> pixels(W*lines);
-    // On parcourt les pixels de l'espace image :
-    for ( int i = 0; i < lines; ++i ) {
-      computeMandelbrotSetRow(W, H, maxIter, start+i, pixels.data() + W*(lines-i-1) );
-    }
-    return pixels;
-}
-
 std::vector<int>
 computeMandelbrotSet( int W, int H, int maxIter )
 {
@@ -109,6 +97,7 @@ computeMandelbrotSet( int W, int H, int maxIter )
     std::vector<int> pixels(W*H);
     start = std::chrono::system_clock::now();
     // On parcourt les pixels de l'espace image :
+# pragma omp parallel for num_threads(4) schedule(dynamic)
     for ( int i = 0; i < H; ++i ) {
       computeMandelbrotSetRow(W, H, maxIter, i, pixels.data() + W*(H-i-1) );
     }

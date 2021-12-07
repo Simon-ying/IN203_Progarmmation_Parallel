@@ -106,6 +106,8 @@ bhuddabrot ( unsigned long nbSamples, unsigned long maxIter, unsigned width, uns
             comp_mandelbrot_orbit( maxIter, c0, width, height, image );
             iSample ++;
         }
+
+
         iSample--;
     }
     return image;
