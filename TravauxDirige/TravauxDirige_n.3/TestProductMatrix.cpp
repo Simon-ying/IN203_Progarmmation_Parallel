@@ -6,6 +6,7 @@
 #include <chrono>
 #include "Matrix.hpp"
 #include "ProdMatMat.hpp"
+#include "omp.h"
 
 std::tuple<std::vector<double>,std::vector<double>,
 	   std::vector<double>,std::vector<double>>  computeTensors(int dim)
@@ -66,6 +67,12 @@ bool verifProduct(const std::vector < double >&uA, std::vector < double >&vA,
 
 int main(int nargs, char *vargs[])
 {
+  //int nPocessors=omp_get_max_threads();
+  //std::cout << "Number of processors : " << nPocessors << std::endl;
+  omp_set_num_threads(8);
+  //nPocessors=omp_get_max_threads();
+  //std::cout << "Number of processors : " << nPocessors << std::endl;
+
   int dim = 1024;
   if (nargs > 1)
     dim = atoi(vargs[1]);

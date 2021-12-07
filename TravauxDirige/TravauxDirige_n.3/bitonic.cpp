@@ -9,6 +9,8 @@
 # include <chrono>
 # include <stdexcept>
 # include "Vecteur.hpp"
+# include <thread>
+# include <future>
 using namespace Algebra;
 
 // Tri Parallèle Bitonic
@@ -35,19 +37,51 @@ namespace Bitonic
     return std::make_pair(first.first, first.second + second.second);
   }
   // --------------------------------------------
-  template<typename Obj> std::pair<Obj*,int>
-  _sort( bool up, Obj* objs, int len )
+  template<typename Obj> void
+  _sort( bool up, Obj* objs, int len, std::promise<std::pair<Obj*,int>> &promiseObj )
   {
-    if (len <= 1) return std::make_pair(objs,1);
-    auto first  = _sort(true , objs, len/2);
-    auto second = _sort(false, objs + len/2, len - (len/2));
+    if (len <= 1){
+      promiseObj.set_value(std::make_pair(objs,1));
+      return;
+    }
+    std::promise<std::pair<Obj*,int>> promiseObjf;
+    std::future<std::pair<Obj*,int>> futureObjf = promiseObjf.get_future();
+    std::promise<std::pair<Obj*,int>> promiseObjs;
+    std::future<std::pair<Obj*,int>> futureObjs = promiseObjs.get_future();
+
+    _sort(true, objs, len/2, promiseObjf);
+    _sort(false, objs + len/2, len - (len/2), promiseObjs);
+    auto first  = futureObjf.get();
+    auto second = futureObjs.get();
+    promiseObj.set_value(_merge(up, first.first, first.second + second.second));
+    return;
+  }
+
+  template<typename Obj> std::pair<Obj*,int>
+  _sort_thread( bool up, Obj* objs, int len)
+  {
+    if (len <= 1){
+      return std::make_pair(objs,1);
+    }
+
+    std::promise<std::pair<Obj*,int>> promiseObjf;
+    std::future<std::pair<Obj*,int>> futureObjf = promiseObjf.get_future();
+    std::promise<std::pair<Obj*,int>> promiseObjs;
+    std::future<std::pair<Obj*,int>> futureObjs = promiseObjs.get_future();
+
+    std::thread t1(_sort<Obj>, true, objs, len/2, std::ref(promiseObjf));
+    std::thread t2(_sort<Obj>, false, objs + len/2, len - (len/2), std::ref(promiseObjs));
+    t1.join();
+    t2.join();
+    auto first  = futureObjf.get();
+    auto second = futureObjs.get();
     return _merge(up, first.first, first.second + second.second );
   }
   // --------------------------------------------
   template<typename Obj> std::vector<Obj>&
   sort( bool up, std::vector<Obj>& x )
   {
-    _sort(up, x.data(), int(x.size()));
+    _sort_thread(up, x.data(), int(x.size()));
     return x;
   }  
 }

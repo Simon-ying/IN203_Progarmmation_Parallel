@@ -9,6 +9,7 @@
 # include <algorithm>
 # include <chrono>
 # include <fstream>
+# include "omp.h"
 
 struct Complex
 {
@@ -94,7 +95,8 @@ bhuddabrot ( unsigned long nbSamples, unsigned long maxIter, unsigned width, uns
 
     std::cerr << "Computing starting c\n";
     std::vector<unsigned> image(width*height, 0U);
-    for ( unsigned long iSample = 0; iSample < nbSamples; ) {
+# pragma omp parallel for schedule(dynamic)
+    for ( unsigned long iSample = 0; iSample < nbSamples; iSample++) {
         float r = genNorm();
         float angle = genAngle();
         Complex c{ r * std::cos(angle), r * std::sin(angle) };
@@ -104,6 +106,7 @@ bhuddabrot ( unsigned long nbSamples, unsigned long maxIter, unsigned width, uns
             comp_mandelbrot_orbit( maxIter, c0, width, height, image );
             iSample ++;
         }
+        iSample--;
     }
     return image;
 }

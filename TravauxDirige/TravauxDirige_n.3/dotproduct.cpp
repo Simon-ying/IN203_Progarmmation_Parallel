@@ -3,12 +3,13 @@
 # include <string>
 # include <iostream>
 # include <chrono>
+# include <omp.h>
 
 double dot( std::vector<double>& u, std::vector<double>& v )
 {
   assert(u.size() == v.size());
   double scal = 0.;
-# pragma omp parallel for reduction(+:scal)
+# pragma omp parallel for num_threads(8) reduction(+:scal) 
   for ( size_t i = 0; i < u.size(); ++i ) {
     scal += u[i]*v[i];
   }
