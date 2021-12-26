@@ -15,8 +15,6 @@
 
 ## TD 2
 
-- Les question 1 et 2 ?
-- Temps total ? 
 - realloc pour vector : `std::vector<int>(W*H).swap(pixels);`
 - MPI_Recv(..., MPI_Status& status) : `status.MPI_TAG`, `status.MPI_SOURCE`
 - `default`, `delete`
@@ -51,6 +49,6 @@
 
   
 
-- Expliquez pourquoi la permutation des boucles optimales que vous avez trouvée est bien la façon optimale d’ordonner les boucles en vous servant toujours du support de cours.  memery bound et cpu bound
-
 ## TD 4
+
+- tbb

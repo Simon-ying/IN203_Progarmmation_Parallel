@@ -45,7 +45,6 @@
 #### principe de mémoire distribuée
 
 - **nœud de calcul** : l’ensemble unité de calcul + mémoire vive. Chaque unité de calcul possède sa propre mémoire vive.
-- 
 
 #### Architecture NUMA
 
