@@ -17,7 +17,7 @@ Sinon, ajouter les CFLAGS et LDFLAGS dans le Make_linux.inc
 
     CXXFLAGS+=$(mpic++ --showme:compile)
     LIBS+=$(mpic++ --showme:link)
-    
+
 Dernière option, si aucune des 2 précédentes ne fonctionne (par ex si vous utilisez MPICH) : faire un lien symbolique g++ -> /usr/bin/g++10 dans $HOME/bin et le mettre en premier dans PATH) :
 
      mkdir $HOME/bin
@@ -26,9 +26,13 @@ Dernière option, si aucune des 2 précédentes ne fonctionne (par ex si vous ut
      export PATH=$HOME/bin:$PATH   # dans votre .bashrc
      which -a g++
      g++ --version   # afficher 10.xx
-     
+
  
+
 Enfin, pour ceux qui ne peuvent pas installer g++-10 (sur les postes des salles infos ENSTA), basculez sur la branche "ascii", qui compilera avec un gcc < 10 :
 
     git checkout ascii
-    
+
+# Rapport
+
+Le rapport est écrit dans le fichier `Rapport.pdf` 
