@@ -15,7 +15,7 @@ $$
 
 ## 2 Parallélisation affichage contre simulation
 
-On parallélise le code sur deux processus. L'un s'occupe de l'affichage en synchrone, et l'autre de la simulation.
+On parallélise le code sur deux processus. L'un s'occupe de l'affichage en synchrone (processus 0), et l'autre (processus 1) de la simulation. Le processus 1 envoie le tableau `grille.getStatistiques()` au processus 0 lorsque des statistiques pour les cases de la grille sont mise à jour, et puis le processus 0 affiche ce tableau.
 
 On exécute le programme `simulation_sync_affiche_mpi.exe  ` par `mpiexec -np 2 ./simulation_sync_affiche_mpi.exe`, et puis on calcule le temps total moyen:
 $$
@@ -30,9 +30,9 @@ $$
 
 ### 3.1 Stratégie
 
-Dans le processus 0 (qui s'occupe de l'affichage) , on envoie asynchrone un message après avoir finit l'affichage (`MPI_Isend` & `MPI_Wait`) .
+Dans le processus 0 (qui s'occupe de l'affichage) , on envoie asynchrone un message après avoir finit l'affichage (à l'aide de `MPI_Isend` & `MPI_Wait`) .
 
-Dans le processus 1, on test si le processus 0 a envoyé ce message (`MPI_Iprobe`) , si oui, on envoie les donnés au processus 0; sinon, on continue.
+Dans le processus 1, on test si le processus 0 a envoyé ce message (`MPI_Iprobe`) , si oui, on envoie les donnés (c'est-à-dire le tableau `grille.getStatistiques()`) au processus 0; sinon, on continue.
 
 ### 3.2 Résultat
 
@@ -55,7 +55,7 @@ $$
 
 On exécute le programme `simulation_async_omp.exe  ` par `mpiexec -np 2 ./simulation_async_omp.exe`.
 
-On parallélise le boucle qui est pour mise à jour la condition des individus en ajoutant `# pragma omp parallel for schedule(static)` avant le boucle.
+On parallélise le boucle qui est pour le mise à jour de la condition des individus en ajoutant `# pragma omp parallel for schedule(static)` avant le boucle. Dans ce cas, la variable `population`, qui est un tableau des individus, est partagée entre les threads.
 
 On constate que le temps total est minimal quand le nombre de processus est 2, et pour un nombre d'individus global constant, on a:
 $$
@@ -72,14 +72,12 @@ $$
 
 On exécute le programme `simulation_async_mpi.exe  ` par `mpiexec -np 4 ./simulation_async_mpi.exe`.
 
-On utilise `MPI_Allreduce` pour récupérer les donnés dans le groupe pour la simulation.
+On utilise `MPI_Allreduce` pour récupérer les donnés dans le groupe pour la simulation. L'idée est qu'on distribue les individus dans les processus, et dans chaque processus, on met à jour la situation des individus, et puis des statistiques pour les cases de la grille. Enfin, nous intégrons ces données et transmettons les données mises à jour à chaque processus.
 
 On constate que le temps total est minimal quand le nombre de processus est 4 dans mon ordinateur, et pour un nombre d'individus global constant, on a:
 $$
 speed\ up =  0.0730809 / 0.0135698 =5.386
 $$
-
-## 
 
 ### 5.1 Parallélisation finale
 
