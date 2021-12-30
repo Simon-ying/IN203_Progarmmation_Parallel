@@ -1,4 +1,8 @@
-# Projet : Epidémiologie  
+# Projet : Epidémiologie
+
+## 0 lscpu
+
+![](resultat/lscpu.png)
 
 ## 1 Mesure du temps
 
