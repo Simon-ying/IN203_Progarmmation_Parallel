@@ -10,14 +10,14 @@ CXXFLAGS += -O3 -march=native -Wall
 endif
 
 LIBS = $(LIB) `sdl2-config --cflags` -lSDL2_ttf -lSDL2_image  `sdl2-config --libs` 
-ALL= simulation.exe
+ALL= simulation.exe simulation_sync_affiche_mpi.exe simulation_async_affiche_mpi.exe simulation_async_omp.exe simulation_async_mpi.exe simulation_async_mpi_omp.exe
 
 default:	help
 
 all: $(ALL)
 
 clean:
-	@rm -fr graphisme/src/SDL2/*.o *.exe *~ *.o
+	@rm -fr graphisme/src/SDL2/*.o *.exe *~ *.o *.dat *.txt
 
 OBJS = graphisme/src/SDL2/sdl2.o graphisme/src/SDL2/geometry.o graphisme/src/SDL2/window.o graphisme/src/SDL2/font.o graphisme/src/SDL2/event.o \
 	   graphisme/src/SDL2/texte.o graphisme/src/SDL2/image.o graphisme/src/SDL2/formated_text.o \
@@ -50,6 +50,19 @@ graphisme/src/SDL2/image.o : graphisme/src/SDL2/window.hpp graphisme/src/SDL2/im
 
 simulation.exe:	$(OBJS) simulation.cpp
 	$(CXX) $(CXXFLAGS) $(OBJS) simulation.cpp -o simulation.exe $(LIBS)
+
+simulation_sync_affiche_mpi.exe:	$(OBJS) simulation_sync_affiche_mpi.cpp
+	mpic++ $(CXXFLAGS) $(OBJS) simulation_sync_affiche_mpi.cpp -o simulation_sync_affiche_mpi.exe $(LIBS) -lmpi
+
+simulation_async_affiche_mpi.exe:	$(OBJS) simulation_async_affiche_mpi.cpp
+	mpic++ $(CXXFLAGS) $(OBJS) simulation_async_affiche_mpi.cpp -o simulation_async_affiche_mpi.exe $(LIBS) -lmpi
+simulation_async_omp.exe:	$(OBJS) simulation_async_omp.cpp
+	mpic++ -fopenmp $(CXXFLAGS) $(OBJS) simulation_async_omp.cpp -o simulation_async_omp.exe $(LIBS) -lmpi -lpthread
+
+simulation_async_mpi.exe:	$(OBJS) simulation_async_mpi.cpp
+	mpic++ -fopenmp $(CXXFLAGS) $(OBJS) simulation_async_mpi.cpp -o simulation_async_mpi.exe $(LIBS) -lmpi -lpthread
+simulation_async_mpi_omp.exe:	$(OBJS) simulation_async_mpi_omp.cpp
+	mpic++ -fopenmp $(CXXFLAGS) $(OBJS) simulation_async_mpi_omp.cpp -o simulation_async_mpi_omp.exe $(LIBS) -lmpi -lpthread
 
 help:
 	@echo "Available targets : "
