@@ -33,13 +33,12 @@
 
 - Interblocage (deadlock) <font color=blue>(slides : p.18)</font> : tous les processus envoient message bloquant à un autre processus avant d’effectuer une réception; Ou cas symétrique où tous les processus attendent un message en réception avant d’effectuer un envoi. 
 
-
-
-| **Broadcast** | ![](2_Diffusion.png) |
+|     Name      |        Schema        |
 | :-----------: | :------------------: |
+| **Broadcast** | ![](2_Diffusion.png) |
 |  **Scatter**  |  ![](2_Scatter.png)  |
 |  **Gather**   |  ![](2_Gather.png)   |
-|  **reduce**   |  ![](2_Reduce.png)   |
+|  **Reduce**   |  ![](2_Reduce.png)   |
 |   **Scan**    |   ![](2_Scan.png)    |
 
 

@@ -208,13 +208,6 @@ void simulation(bool affiche)
             std::chrono::duration<double> tempsAvecAffichage = end-start;
             output_Temps << tempsAvecAffichage.count() << std::endl;
 
-            
-
-            
-            
-
-
-
         }
         //#############################################################################################################
         //##    Affichage des resultats pour le temps  actuel
